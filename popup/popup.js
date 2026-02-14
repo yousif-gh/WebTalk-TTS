@@ -197,25 +197,31 @@
     // Clear existing options
     voiceSelect.innerHTML = '';
 
-    if (availableVoices.length === 0) {
+    // Filter to only English and Arabic voices
+    const filteredVoices = availableVoices.filter(voice => {
+      const lang = voice.lang.toLowerCase();
+      return lang.startsWith('en') || lang.startsWith('ar');
+    });
+
+    if (filteredVoices.length === 0) {
       const option = document.createElement('option');
       option.value = '';
-      option.textContent = 'No voices available';
+      option.textContent = 'No English/Arabic voices available';
       voiceSelect.appendChild(option);
       return;
     }
 
-    // Sort voices: prioritize local voices and English
-    const sortedVoices = [...availableVoices].sort((a, b) => {
+    // Sort voices: prioritize local voices, then Arabic, then English
+    const sortedVoices = [...filteredVoices].sort((a, b) => {
       // Prioritize local voices over remote
       if (a.localService !== b.localService) {
         return a.localService ? -1 : 1;
       }
-      // Then sort by language (English first)
-      const aIsEnglish = a.lang.startsWith('en');
-      const bIsEnglish = b.lang.startsWith('en');
-      if (aIsEnglish !== bIsEnglish) {
-        return aIsEnglish ? -1 : 1;
+      // Then sort by language (Arabic first, then English)
+      const aIsArabic = a.lang.toLowerCase().startsWith('ar');
+      const bIsArabic = b.lang.toLowerCase().startsWith('ar');
+      if (aIsArabic !== bIsArabic) {
+        return aIsArabic ? -1 : 1;
       }
       // Finally, alphabetically by name
       return a.name.localeCompare(b.name);
@@ -247,7 +253,7 @@
       saveSettings();
     }
 
-    console.log(`[WebTalk TTS] Loaded ${availableVoices.length} voices`);
+    console.log(`[WebTalk TTS] Loaded ${sortedVoices.length} voices (filtered from ${availableVoices.length} total)`);
   }
 
   /**
