@@ -49,3 +49,29 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     });
   }
 });
+
+/**
+ * Handle keyboard shortcut commands
+ */
+chrome.commands.onCommand.addListener((command) => {
+  console.log('[WebTalk TTS] Command received:', command);
+
+  if (command === 'speak-selection') {
+    // Get the active tab and send speak selection command
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0] && tabs[0].id) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          action: 'speakSelection'
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            console.error('[WebTalk TTS] Error sending command to content script:', chrome.runtime.lastError.message);
+          } else if (response && response.success) {
+            console.log('[WebTalk TTS] Speaking selection via keyboard shortcut');
+          } else if (response && response.error) {
+            console.log('[WebTalk TTS] Speak selection error:', response.error);
+          }
+        });
+      }
+    });
+  }
+});

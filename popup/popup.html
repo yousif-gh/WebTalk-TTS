@@ -70,10 +70,47 @@
           Test Voice
         </button>
       </div>
+
+      <!-- Playback Controls -->
+      <div class="control-group playback-section">
+        <label>Playback Controls</label>
+        <div class="playback-controls">
+          <button id="play-btn" class="btn btn-control" title="Play selected text (Alt+S)">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M4 2.5v11l9-5.5L4 2.5z"/>
+            </svg>
+          </button>
+          <button id="pause-btn" class="btn btn-control" title="Pause" disabled>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <rect x="3" y="2" width="4" height="12"/>
+              <rect x="9" y="2" width="4" height="12"/>
+            </svg>
+          </button>
+          <button id="stop-btn" class="btn btn-control" title="Stop" disabled>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <rect x="3" y="3" width="10" height="10"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Progress Indicator -->
+      <div class="control-group progress-section" id="progress-section" style="display: none;">
+        <div class="progress-info">
+          <span id="progress-text">Ready</span>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+      </div>
     </main>
+
+    <!-- Status Message -->
+    <div id="status-message" class="status-message" style="display: none;"></div>
 
     <footer class="footer">
       <p>Select text on any page, right-click, and choose "Speak highlighted text"</p>
+      <p class="shortcut-hint">Keyboard shortcut: Alt+S</p>
     </footer>
   </div>
 

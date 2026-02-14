@@ -1,18 +1,31 @@
 /**
  * WebTalk TTS - Popup Script
- * Handles voice selection, settings management, and user preferences
+ * Handles voice selection, settings management, playback controls, and user preferences
  */
 
 (function() {
   'use strict';
 
-  // DOM Elements
+  // DOM Elements - Settings
   const voiceSelect = document.getElementById('voice-select');
   const rateSlider = document.getElementById('rate-slider');
   const rateValue = document.getElementById('rate-value');
   const pitchSlider = document.getElementById('pitch-slider');
   const pitchValue = document.getElementById('pitch-value');
   const testVoiceBtn = document.getElementById('test-voice-btn');
+
+  // DOM Elements - Playback Controls
+  const playBtn = document.getElementById('play-btn');
+  const pauseBtn = document.getElementById('pause-btn');
+  const stopBtn = document.getElementById('stop-btn');
+
+  // DOM Elements - Progress
+  const progressSection = document.getElementById('progress-section');
+  const progressText = document.getElementById('progress-text');
+  const progressBar = document.getElementById('progress-bar');
+
+  // DOM Elements - Status
+  const statusMessage = document.getElementById('status-message');
 
   // Default settings
   const DEFAULT_SETTINGS = {
@@ -26,6 +39,14 @@
 
   // Available voices
   let availableVoices = [];
+
+  // Playback state
+  let playbackState = {
+    isPlaying: false,
+    isPaused: false,
+    currentChunk: 0,
+    totalChunks: 0
+  };
 
   /**
    * Initialize the popup
@@ -41,6 +62,94 @@
 
     // Set up event listeners
     setupEventListeners();
+
+    // Get current playback status
+    await refreshPlaybackStatus();
+
+    // Listen for progress updates from content script
+    chrome.runtime.onMessage.addListener(handleProgressMessage);
+  }
+
+  /**
+   * Handle progress messages from content script
+   */
+  function handleProgressMessage(message, sender, sendResponse) {
+    if (message.type === 'playbackProgress') {
+      updatePlaybackUI(message);
+    }
+  }
+
+  /**
+   * Refresh playback status from content script
+   */
+  async function refreshPlaybackStatus() {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab && tab.id) {
+        chrome.tabs.sendMessage(tab.id, { action: 'getStatus' }, (response) => {
+          if (response && response.success) {
+            updatePlaybackUI(response);
+          }
+        });
+      }
+    } catch (error) {
+      console.log('[WebTalk TTS] Could not get playback status');
+    }
+  }
+
+  /**
+   * Update playback UI based on state
+   */
+  function updatePlaybackUI(state) {
+    playbackState = {
+      isPlaying: state.isPlaying || false,
+      isPaused: state.isPaused || false,
+      currentChunk: state.currentChunk || 0,
+      totalChunks: state.totalChunks || 0
+    };
+
+    // Update button states
+    if (playbackState.isPlaying) {
+      playBtn.disabled = playbackState.isPaused ? false : true;
+      pauseBtn.disabled = playbackState.isPaused;
+      stopBtn.disabled = false;
+
+      // Update button appearance
+      if (playbackState.isPaused) {
+        playBtn.classList.remove('active');
+        pauseBtn.classList.add('active');
+      } else {
+        playBtn.classList.add('active');
+        pauseBtn.classList.remove('active');
+      }
+
+      // Show progress
+      progressSection.style.display = 'block';
+      const percentage = playbackState.totalChunks > 0
+        ? Math.round((playbackState.currentChunk / playbackState.totalChunks) * 100)
+        : 0;
+      progressText.textContent = `Reading chunk ${playbackState.currentChunk} of ${playbackState.totalChunks}`;
+      progressBar.style.width = `${percentage}%`;
+    } else {
+      playBtn.disabled = false;
+      pauseBtn.disabled = true;
+      stopBtn.disabled = true;
+      playBtn.classList.remove('active');
+      pauseBtn.classList.remove('active');
+
+      // Hide progress when not playing
+      if (playbackState.totalChunks === 0) {
+        progressSection.style.display = 'none';
+      } else {
+        // Show completion
+        progressText.textContent = 'Finished';
+        progressBar.style.width = '100%';
+        // Hide after a moment
+        setTimeout(() => {
+          progressSection.style.display = 'none';
+        }, 2000);
+      }
+    }
   }
 
   /**
@@ -155,6 +264,110 @@
 
     // Test voice button
     testVoiceBtn.addEventListener('click', testVoice);
+
+    // Playback controls
+    playBtn.addEventListener('click', handlePlay);
+    pauseBtn.addEventListener('click', handlePause);
+    stopBtn.addEventListener('click', handleStop);
+  }
+
+  /**
+   * Handle play button click
+   */
+  async function handlePlay() {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab || !tab.id) {
+        showStatus('No active tab found', 'error');
+        return;
+      }
+
+      if (playbackState.isPlaying && playbackState.isPaused) {
+        // Resume playback
+        chrome.tabs.sendMessage(tab.id, { action: 'resume' }, (response) => {
+          if (chrome.runtime.lastError) {
+            showStatus('Could not communicate with page', 'error');
+            return;
+          }
+          if (response && response.success) {
+            showStatus('Resumed', 'success');
+          }
+        });
+      } else {
+        // Start new playback with selected text
+        chrome.tabs.sendMessage(tab.id, { action: 'speakSelection' }, (response) => {
+          if (chrome.runtime.lastError) {
+            showStatus('Could not communicate with page. Try refreshing.', 'error');
+            return;
+          }
+          if (response && response.success) {
+            showStatus('Playing selected text', 'success');
+          } else if (response && response.error) {
+            if (response.error === 'No text selected') {
+              showStatus('Please select some text on the page first', 'info');
+            } else {
+              showStatus(response.error, 'error');
+            }
+          }
+        });
+      }
+    } catch (error) {
+      showStatus('An error occurred', 'error');
+      console.error('[WebTalk TTS] Play error:', error);
+    }
+  }
+
+  /**
+   * Handle pause button click
+   */
+  async function handlePause() {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab || !tab.id) return;
+
+      chrome.tabs.sendMessage(tab.id, { action: 'pause' }, (response) => {
+        if (response && response.success) {
+          showStatus('Paused', 'info');
+        }
+      });
+    } catch (error) {
+      console.error('[WebTalk TTS] Pause error:', error);
+    }
+  }
+
+  /**
+   * Handle stop button click
+   */
+  async function handleStop() {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab || !tab.id) return;
+
+      chrome.tabs.sendMessage(tab.id, { action: 'stop' }, (response) => {
+        if (response && response.success) {
+          showStatus('Stopped', 'info');
+          updatePlaybackUI({ isPlaying: false, isPaused: false, currentChunk: 0, totalChunks: 0 });
+        }
+      });
+    } catch (error) {
+      console.error('[WebTalk TTS] Stop error:', error);
+    }
+  }
+
+  /**
+   * Show status message
+   * @param {string} message - Message to display
+   * @param {string} type - Message type: 'success', 'error', 'info'
+   */
+  function showStatus(message, type = 'info') {
+    statusMessage.textContent = message;
+    statusMessage.className = `status-message ${type}`;
+    statusMessage.style.display = 'block';
+
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+      statusMessage.style.display = 'none';
+    }, 3000);
   }
 
   /**

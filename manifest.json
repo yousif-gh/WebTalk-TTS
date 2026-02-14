@@ -28,5 +28,14 @@
   },
   "background": {
     "service_worker": "scripts/background.js"
+  },
+  "commands": {
+    "speak-selection": {
+      "suggested_key": {
+        "default": "Alt+S",
+        "mac": "Alt+S"
+      },
+      "description": "Speak selected text"
+    }
   }
 }

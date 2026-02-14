@@ -73,12 +73,116 @@ function isValidTextForSpeech(text) {
   return cleaned.length > 0;
 }
 
+/**
+ * Split text into chunks suitable for speech synthesis
+ * - Splits by sentence boundaries (., !, ?, etc.)
+ * - Ensures no chunk exceeds maxChunkSize characters
+ * - If a sentence is longer than maxChunkSize, splits at word boundaries
+ * - Preserves sentence meaning and flow
+ *
+ * @param {string} text - The text to chunk
+ * @param {number} maxChunkSize - Maximum characters per chunk (default 200)
+ * @returns {string[]} - Array of text chunks
+ */
+function chunkTextForSpeech(text, maxChunkSize = 200) {
+  if (!text || typeof text !== 'string') {
+    return [];
+  }
+
+  // Clean the text first
+  const cleanedText = cleanTextForSpeech(text);
+
+  if (!cleanedText) {
+    return [];
+  }
+
+  // If text is short enough, return as single chunk
+  if (cleanedText.length <= maxChunkSize) {
+    return [cleanedText];
+  }
+
+  const chunks = [];
+
+  // Split by sentence boundaries - match sentences ending with . ! ? or other terminators
+  // Also handles abbreviations and edge cases
+  const sentenceRegex = /[^.!?\n]+[.!?\n]+|[^.!?\n]+$/g;
+  const sentences = cleanedText.match(sentenceRegex) || [cleanedText];
+
+  let currentChunk = '';
+
+  for (const sentence of sentences) {
+    const trimmedSentence = sentence.trim();
+
+    if (!trimmedSentence) {
+      continue;
+    }
+
+    // If sentence itself exceeds max size, split at word boundaries
+    if (trimmedSentence.length > maxChunkSize) {
+      // First, push any accumulated chunk
+      if (currentChunk) {
+        chunks.push(currentChunk.trim());
+        currentChunk = '';
+      }
+
+      // Split long sentence at word boundaries
+      const words = trimmedSentence.split(/\s+/);
+      let wordChunk = '';
+
+      for (const word of words) {
+        // If a single word exceeds max size, split it (rare case)
+        if (word.length > maxChunkSize) {
+          if (wordChunk) {
+            chunks.push(wordChunk.trim());
+            wordChunk = '';
+          }
+          // Split long word into pieces
+          for (let i = 0; i < word.length; i += maxChunkSize) {
+            chunks.push(word.substring(i, i + maxChunkSize));
+          }
+        } else if ((wordChunk + ' ' + word).trim().length > maxChunkSize) {
+          // Adding this word would exceed limit
+          if (wordChunk) {
+            chunks.push(wordChunk.trim());
+          }
+          wordChunk = word;
+        } else {
+          wordChunk = wordChunk ? wordChunk + ' ' + word : word;
+        }
+      }
+
+      // Push remaining words from long sentence
+      if (wordChunk) {
+        chunks.push(wordChunk.trim());
+      }
+    } else if ((currentChunk + ' ' + trimmedSentence).trim().length > maxChunkSize) {
+      // Adding this sentence would exceed limit - push current chunk and start new one
+      if (currentChunk) {
+        chunks.push(currentChunk.trim());
+      }
+      currentChunk = trimmedSentence;
+    } else {
+      // Add sentence to current chunk
+      currentChunk = currentChunk ? currentChunk + ' ' + trimmedSentence : trimmedSentence;
+    }
+  }
+
+  // Push any remaining chunk
+  if (currentChunk) {
+    chunks.push(currentChunk.trim());
+  }
+
+  // Filter out any empty chunks
+  return chunks.filter(chunk => chunk.length > 0);
+}
+
 // Export functions for use in other scripts
 // Using window object for content script compatibility
 if (typeof window !== 'undefined') {
   window.WebTalkUtils = {
     cleanTextForSpeech,
     truncateText,
-    isValidTextForSpeech
+    isValidTextForSpeech,
+    chunkTextForSpeech
   };
 }
