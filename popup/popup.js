@@ -6,6 +6,11 @@
 (function() {
   'use strict';
 
+  // Cross-browser compatibility shim
+  // Both Firefox and Chrome support chrome.* APIs in MV3,
+  // but this provides a fallback for edge cases
+  const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+
   // DOM Elements - Settings
   const voiceSelect = document.getElementById('voice-select');
   const rateSlider = document.getElementById('rate-slider');
@@ -154,6 +159,9 @@
 
   /**
    * Initialize voices - handles async voice loading
+   * Note: Voice loading timing differs between browsers:
+   * - Chrome: Voices load asynchronously, voiceschanged event fires
+   * - Firefox: Voices may be available immediately or after a short delay
    */
   function initVoices() {
     // Try to get voices immediately
@@ -162,11 +170,23 @@
     if (availableVoices.length > 0) {
       populateVoiceList();
     } else {
-      // Voices load asynchronously in Chrome - wait for voiceschanged event
-      window.speechSynthesis.addEventListener('voiceschanged', () => {
+      // Voices load asynchronously - set up listener for when they're ready
+      const handleVoicesChanged = () => {
         availableVoices = window.speechSynthesis.getVoices();
         populateVoiceList();
-      });
+      };
+
+      window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
+
+      // Firefox fallback: poll for voices if event doesn't fire
+      setTimeout(() => {
+        if (availableVoices.length === 0) {
+          availableVoices = window.speechSynthesis.getVoices();
+          if (availableVoices.length > 0) {
+            populateVoiceList();
+          }
+        }
+      }, 100);
     }
   }
 

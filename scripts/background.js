@@ -3,6 +3,11 @@
  * Handles extension background tasks and context menus
  */
 
+// Cross-browser compatibility shim
+// Both Firefox and Chrome support chrome.* APIs in MV3,
+// but this provides a fallback for edge cases
+const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+
 // Service worker initialization
 console.log('[WebTalk TTS] Background service worker initialized');
 

@@ -92,7 +92,7 @@ body {
   color: var(--text-color);
 }
 
-/* Voice select dropdown */
+/* Voice select dropdown - Cross-browser compatible */
 .voice-select {
   width: 100%;
   padding: 10px 12px;
@@ -102,10 +102,22 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   cursor: pointer;
+  /* Cross-browser appearance reset */
+  -webkit-appearance: none;
+  -moz-appearance: none;
   appearance: none;
+  /* Custom dropdown arrow - works in all browsers */
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2386868b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
+  /* Ensure text doesn't overlap the arrow */
+  padding-right: 32px;
+}
+
+/* Firefox-specific select fixes */
+.voice-select:-moz-focusring {
+  color: transparent;
+  text-shadow: 0 0 0 var(--text-color);
 }
 
 .voice-select:focus {
@@ -114,7 +126,12 @@ body {
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
 }
 
-/* Slider styles */
+/* IE/Edge legacy dropdown arrow removal */
+.voice-select::-ms-expand {
+  display: none;
+}
+
+/* Slider styles - Cross-browser compatible */
 .slider-header {
   display: flex;
   justify-content: space-between;
@@ -135,11 +152,25 @@ body {
   border-radius: 3px;
   background: var(--slider-track);
   outline: none;
+  /* Cross-browser appearance reset */
+  -webkit-appearance: none;
+  -moz-appearance: none;
   appearance: none;
   cursor: pointer;
 }
 
+/* Firefox track styling */
+.slider::-moz-range-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--slider-track);
+  border: none;
+}
+
+/* WebKit (Chrome, Safari, Edge) thumb styling */
 .slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
   appearance: none;
   width: 18px;
   height: 18px;
@@ -148,12 +179,19 @@ body {
   cursor: pointer;
   box-shadow: var(--shadow);
   transition: transform 0.1s ease;
+  /* Vertically center thumb on track */
+  margin-top: -6px;
 }
 
 .slider::-webkit-slider-thumb:hover {
   transform: scale(1.1);
 }
 
+.slider::-webkit-slider-thumb:active {
+  transform: scale(0.95);
+}
+
+/* Firefox thumb styling */
 .slider::-moz-range-thumb {
   width: 18px;
   height: 18px;
@@ -162,6 +200,28 @@ body {
   background: var(--slider-thumb);
   cursor: pointer;
   box-shadow: var(--shadow);
+  transition: transform 0.1s ease;
+}
+
+.slider::-moz-range-thumb:hover {
+  transform: scale(1.1);
+}
+
+.slider::-moz-range-thumb:active {
+  transform: scale(0.95);
+}
+
+/* Firefox focus styling */
+.slider::-moz-focus-outer {
+  border: 0;
+}
+
+/* WebKit slider runnable track (additional styling) */
+.slider::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--slider-track);
 }
 
 .slider-labels {
@@ -342,4 +402,74 @@ body {
   margin-top: 6px;
   font-weight: 500;
   color: var(--accent-color);
+}
+
+/* ========================================
+   Cross-Browser Compatibility Fixes
+   ======================================== */
+
+/* Ensure consistent box model across browsers */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Prevent text size adjustment on orientation change (iOS/Android) */
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Consistent button styling across browsers */
+button {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  margin: 0;
+}
+
+/* Remove default button styles in Firefox */
+button::-moz-focus-inner {
+  border: 0;
+  padding: 0;
+}
+
+/* Ensure SVG icons scale properly */
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Firefox scrollbar styling (optional, for consistency) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--slider-track) transparent;
+}
+
+/* WebKit scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--slider-track);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-secondary);
+}
+
+/* Ensure popup has consistent minimum dimensions */
+body {
+  min-width: 300px;
+  min-height: 400px;
 }

@@ -6,6 +6,11 @@
 (function() {
   'use strict';
 
+  // Cross-browser compatibility shim
+  // Both Firefox and Chrome support chrome.* APIs in MV3,
+  // but this provides a fallback for edge cases
+  const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+
   // Default settings (used if no stored settings found)
   const DEFAULT_SETTINGS = {
     voiceURI: '',
@@ -44,16 +49,31 @@
 
   /**
    * Initialize voices - handles async voice loading
+   * Note: Voice loading timing differs between browsers:
+   * - Chrome: Voices load asynchronously, voiceschanged event fires
+   * - Firefox: Voices may be available immediately or after a short delay
    */
   function initVoices() {
     availableVoices = window.speechSynthesis.getVoices();
 
     if (availableVoices.length === 0) {
-      // Voices load asynchronously in Chrome
-      window.speechSynthesis.addEventListener('voiceschanged', () => {
+      // Voices load asynchronously - set up listener for when they're ready
+      const handleVoicesChanged = () => {
         availableVoices = window.speechSynthesis.getVoices();
         console.log(`[WebTalk TTS] Loaded ${availableVoices.length} voices`);
-      });
+      };
+
+      window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
+
+      // Firefox fallback: poll for voices if event doesn't fire
+      setTimeout(() => {
+        if (availableVoices.length === 0) {
+          availableVoices = window.speechSynthesis.getVoices();
+          if (availableVoices.length > 0) {
+            console.log(`[WebTalk TTS] Loaded ${availableVoices.length} voices (fallback)`);
+          }
+        }
+      }, 100);
     } else {
       console.log(`[WebTalk TTS] Loaded ${availableVoices.length} voices`);
     }
