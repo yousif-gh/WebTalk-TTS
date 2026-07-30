@@ -30,7 +30,7 @@
     }
   },
   "background": {
-    "scripts": ["scripts/background.js"],
+    "scripts": ["scripts/config.js", "scripts/background.js"],
     "service_worker": "scripts/background.js"
   }
 }

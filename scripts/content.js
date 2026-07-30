@@ -366,36 +366,33 @@
    * @returns {Promise} - Resolves when chunk finishes playing
    */
   async function speakChunk(chunk, settings) {
+    // A local AbortController just to detect "stopped while waiting" below -
+    // the actual fetch runs in background.js (see rationale there), so
+    // calling .abort() here doesn't cancel network I/O, only marks intent.
     const controller = new AbortController();
     playbackState.currentAbortController = controller;
 
-    let response;
+    let result;
     try {
-      response = await fetch(`${SERVER_URL}/tts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: chunk, voice: settings.voiceURI, speed: settings.rate }),
-        signal: controller.signal
+      result = await chrome.runtime.sendMessage({
+        action: 'fetchAudio',
+        text: chunk,
+        voice: settings.voiceURI,
+        speed: settings.rate
       });
     } catch (error) {
-      if (error.name === 'AbortError') {
-        return; // Stopped intentionally, not an error
-      }
       throw new Error(`Kokoro server unreachable at ${SERVER_URL}. Is it running?`);
     }
 
-    if (!response.ok) {
-      let detail = response.statusText;
-      try {
-        const body = await response.json();
-        detail = body.detail || detail;
-      } catch (e) {
-        // ignore, use statusText
-      }
-      throw new Error(`Kokoro server error: ${detail}`);
+    if (controller.signal.aborted) {
+      return; // Stopped intentionally while the request was in flight
     }
 
-    const arrayBuffer = await response.arrayBuffer();
+    if (!result || !result.success) {
+      throw new Error((result && result.error) || 'Kokoro server error');
+    }
+
+    const arrayBuffer = result.audio;
     const ctx = getAudioContext();
     if (ctx.state === 'suspended') {
       await ctx.resume();

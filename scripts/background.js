@@ -8,8 +8,53 @@
 // but this provides a fallback for edge cases
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 
+// On Chrome this file runs as a real service worker, which supports
+// importScripts(). On Firefox, scripts/config.js is already loaded first via
+// manifest.json's background.scripts array, so WEBTALK_SERVER_URL exists.
+if (typeof importScripts === 'function' && typeof WEBTALK_SERVER_URL === 'undefined') {
+  importScripts('config.js');
+}
+const SERVER_URL = typeof WEBTALK_SERVER_URL !== 'undefined' ? WEBTALK_SERVER_URL : 'http://localhost:8008';
+
 // Service worker initialization
 console.log('[WebTalk TTS] Background service worker initialized');
+
+/**
+ * Fetch synthesized audio from the Kokoro server on behalf of content
+ * scripts. Runs here (not in content.js) because content-script fetches are
+ * subject to the active page's CSP connect-src directive - some sites
+ * (e.g. github.com) block it even though the extension itself has
+ * host_permissions for localhost. The background service worker isn't
+ * subject to any page's CSP.
+ */
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'fetchAudio') {
+    fetch(`${SERVER_URL}/tts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: message.text, voice: message.voice, speed: message.speed })
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          let detail = response.statusText;
+          try {
+            const body = await response.json();
+            detail = body.detail || detail;
+          } catch (e) {
+            // ignore, use statusText
+          }
+          sendResponse({ success: false, error: `Kokoro server error: ${detail}` });
+          return;
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        sendResponse({ success: true, audio: arrayBuffer });
+      })
+      .catch(() => {
+        sendResponse({ success: false, error: `Kokoro server unreachable at ${SERVER_URL}. Is it running?` });
+      });
+    return true; // async response
+  }
+});
 
 // Context menu ID constant
 const CONTEXT_MENU_ID = 'webtalk-speak-selection';
