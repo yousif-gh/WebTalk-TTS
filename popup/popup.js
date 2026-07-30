@@ -6,17 +6,12 @@
 (function() {
   'use strict';
 
-  // Cross-browser compatibility shim
-  // Both Firefox and Chrome support chrome.* APIs in MV3,
-  // but this provides a fallback for edge cases
-  const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+  const SERVER_URL = typeof WEBTALK_SERVER_URL !== 'undefined' ? WEBTALK_SERVER_URL : 'http://localhost:8008';
 
   // DOM Elements - Settings
   const voiceSelect = document.getElementById('voice-select');
   const rateSlider = document.getElementById('rate-slider');
   const rateValue = document.getElementById('rate-value');
-  const pitchSlider = document.getElementById('pitch-slider');
-  const pitchValue = document.getElementById('pitch-value');
   const testVoiceBtn = document.getElementById('test-voice-btn');
 
   // DOM Elements - Playback Controls
@@ -35,8 +30,7 @@
   // Default settings
   const DEFAULT_SETTINGS = {
     voiceURI: '',
-    rate: 1.0,
-    pitch: 1.0
+    rate: 1.0
   };
 
   // Current settings
@@ -44,6 +38,9 @@
 
   // Available voices
   let availableVoices = [];
+
+  // True when the Kokoro server could not be reached
+  let serverUnreachable = false;
 
   // Playback state
   let playbackState = {
@@ -63,7 +60,7 @@
     await loadSettings();
 
     // Initialize voice list
-    initVoices();
+    await initVoices();
 
     // Set up event listeners
     setupEventListeners();
@@ -136,7 +133,7 @@
       progressText.textContent = `Reading chunk ${playbackState.currentChunk} of ${playbackState.totalChunks}`;
       progressBar.style.width = `${percentage}%`;
     } else {
-      playBtn.disabled = false;
+      playBtn.disabled = serverUnreachable;
       pauseBtn.disabled = true;
       stopBtn.disabled = true;
       playBtn.classList.remove('active');
@@ -158,102 +155,77 @@
   }
 
   /**
-   * Initialize voices - handles async voice loading
-   * Note: Voice loading timing differs between browsers:
-   * - Chrome: Voices load asynchronously, voiceschanged event fires
-   * - Firefox: Voices may be available immediately or after a short delay
+   * Initialize voices by fetching them from the Kokoro server
    */
-  function initVoices() {
-    // Try to get voices immediately
-    availableVoices = window.speechSynthesis.getVoices();
-
-    if (availableVoices.length > 0) {
+  async function initVoices() {
+    try {
+      const response = await fetch(`${SERVER_URL}/voices`);
+      if (!response.ok) {
+        throw new Error(`Server responded with ${response.status}`);
+      }
+      const data = await response.json();
+      availableVoices = data.voices || [];
       populateVoiceList();
-    } else {
-      // Voices load asynchronously - set up listener for when they're ready
-      const handleVoicesChanged = () => {
-        availableVoices = window.speechSynthesis.getVoices();
-        populateVoiceList();
-      };
-
-      window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
-
-      // Firefox fallback: poll for voices if event doesn't fire
-      setTimeout(() => {
-        if (availableVoices.length === 0) {
-          availableVoices = window.speechSynthesis.getVoices();
-          if (availableVoices.length > 0) {
-            populateVoiceList();
-          }
-        }
-      }, 100);
+    } catch (error) {
+      console.error('[WebTalk TTS] Could not load voices:', error);
+      voiceSelect.innerHTML = '';
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = 'Kokoro server unreachable';
+      voiceSelect.appendChild(option);
+      voiceSelect.disabled = true;
+      testVoiceBtn.disabled = true;
+      serverUnreachable = true;
+      playBtn.disabled = true;
+      showStatus(`Cannot reach Kokoro server at ${SERVER_URL}. Start it and reopen the popup.`, 'error');
     }
   }
 
   /**
-   * Populate the voice selection dropdown
+   * Populate the voice selection dropdown from the Kokoro voice list
    */
   function populateVoiceList() {
-    // Clear existing options
     voiceSelect.innerHTML = '';
 
-    // Filter to only English and Arabic voices
-    const filteredVoices = availableVoices.filter(voice => {
-      const lang = voice.lang.toLowerCase();
-      return lang.startsWith('en') || lang.startsWith('ar');
-    });
-
-    if (filteredVoices.length === 0) {
+    if (availableVoices.length === 0) {
       const option = document.createElement('option');
       option.value = '';
-      option.textContent = 'No English/Arabic voices available';
+      option.textContent = 'No voices available';
       voiceSelect.appendChild(option);
       return;
     }
 
-    // Sort voices: prioritize local voices, then Arabic, then English
-    const sortedVoices = [...filteredVoices].sort((a, b) => {
-      // Prioritize local voices over remote
-      if (a.localService !== b.localService) {
-        return a.localService ? -1 : 1;
+    const sortedVoices = [...availableVoices].sort((a, b) => {
+      if (a.lang !== b.lang) {
+        return a.lang.localeCompare(b.lang);
       }
-      // Then sort by language (Arabic first, then English)
-      const aIsArabic = a.lang.toLowerCase().startsWith('ar');
-      const bIsArabic = b.lang.toLowerCase().startsWith('ar');
-      if (aIsArabic !== bIsArabic) {
-        return aIsArabic ? -1 : 1;
-      }
-      // Finally, alphabetically by name
       return a.name.localeCompare(b.name);
     });
 
-    // Add voices to dropdown
     sortedVoices.forEach(voice => {
       const option = document.createElement('option');
-      option.value = voice.voiceURI;
-      option.textContent = `${voice.name} (${voice.lang})${voice.localService ? '' : ' [Online]'}`;
+      option.value = voice.id;
+      option.textContent = `${voice.name} (${voice.lang})`;
       voiceSelect.appendChild(option);
     });
 
     // Restore saved voice selection
     if (currentSettings.voiceURI) {
-      const savedVoice = sortedVoices.find(v => v.voiceURI === currentSettings.voiceURI);
+      const savedVoice = sortedVoices.find(v => v.id === currentSettings.voiceURI);
       if (savedVoice) {
         voiceSelect.value = currentSettings.voiceURI;
       } else {
-        // Saved voice not found, use first available
         voiceSelect.selectedIndex = 0;
         currentSettings.voiceURI = voiceSelect.value;
         saveSettings();
       }
     } else {
-      // No saved voice, use first available
       voiceSelect.selectedIndex = 0;
       currentSettings.voiceURI = voiceSelect.value;
       saveSettings();
     }
 
-    console.log(`[WebTalk TTS] Loaded ${sortedVoices.length} voices (filtered from ${availableVoices.length} total)`);
+    console.log(`[WebTalk TTS] Loaded ${sortedVoices.length} voices`);
   }
 
   /**
@@ -274,17 +246,6 @@
     });
 
     rateSlider.addEventListener('change', () => {
-      saveSettings();
-    });
-
-    // Pitch slider change
-    pitchSlider.addEventListener('input', () => {
-      const pitch = parseFloat(pitchSlider.value);
-      currentSettings.pitch = pitch;
-      pitchValue.textContent = pitch.toFixed(1);
-    });
-
-    pitchSlider.addEventListener('change', () => {
       saveSettings();
     });
 
@@ -412,9 +373,6 @@
       rateSlider.value = currentSettings.rate;
       rateValue.textContent = `${currentSettings.rate.toFixed(1)}x`;
 
-      pitchSlider.value = currentSettings.pitch;
-      pitchValue.textContent = currentSettings.pitch.toFixed(1);
-
     } catch (error) {
       console.error('[WebTalk TTS] Error loading settings:', error);
     }
@@ -435,40 +393,61 @@
   /**
    * Test the current voice with sample text
    */
-  function testVoice() {
-    // Cancel any ongoing speech
-    window.speechSynthesis.cancel();
-
+  async function testVoice() {
     const testText = 'Hello! This is a test of the WebTalk text-to-speech voice.';
-    const utterance = new SpeechSynthesisUtterance(testText);
 
-    // Apply current settings
-    utterance.rate = currentSettings.rate;
-    utterance.pitch = currentSettings.pitch;
-
-    // Find and set the selected voice
-    const selectedVoice = availableVoices.find(v => v.voiceURI === currentSettings.voiceURI);
-    if (selectedVoice) {
-      utterance.voice = selectedVoice;
-    }
-
-    // Update button state during playback
     testVoiceBtn.disabled = true;
     testVoiceBtn.textContent = 'Speaking...';
 
-    utterance.onend = () => {
+    let response;
+    try {
+      response = await fetch(`${SERVER_URL}/tts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: testText, voice: currentSettings.voiceURI, speed: currentSettings.rate })
+      });
+    } catch (error) {
+      console.error('[WebTalk TTS] Test voice fetch error:', error);
+      showStatus(`Cannot reach Kokoro server at ${SERVER_URL}`, 'error');
       testVoiceBtn.disabled = false;
       testVoiceBtn.textContent = 'Test Voice';
-    };
+      return;
+    }
 
-    utterance.onerror = (event) => {
-      console.error('[WebTalk TTS] Speech error:', event.error);
+    if (!response.ok) {
+      let detail = response.statusText;
+      try {
+        const body = await response.json();
+        detail = body.detail || detail;
+      } catch (e) {
+        // ignore, use statusText
+      }
+      showStatus(`Kokoro server error: ${detail}`, 'error');
       testVoiceBtn.disabled = false;
       testVoiceBtn.textContent = 'Test Voice';
+      return;
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+
+    const reset = () => {
+      testVoiceBtn.disabled = false;
+      testVoiceBtn.textContent = 'Test Voice';
+      URL.revokeObjectURL(url);
     };
 
-    // Speak the test text
-    window.speechSynthesis.speak(utterance);
+    audio.onended = reset;
+    audio.onerror = (event) => {
+      console.error('[WebTalk TTS] Test voice playback error:', event);
+      reset();
+    };
+
+    audio.play().catch((error) => {
+      console.error('[WebTalk TTS] Test voice play error:', error);
+      reset();
+    });
   }
 
   // Initialize when DOM is ready

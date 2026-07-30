@@ -8,6 +8,9 @@
     "storage",
     "contextMenus"
   ],
+  "host_permissions": [
+    "http://localhost:8008/*"
+  ],
   "icons": {
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png"
@@ -15,7 +18,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["scripts/content.js"],
+      "js": ["scripts/config.js", "scripts/content.js"],
       "run_at": "document_idle"
     }
   ],
@@ -29,14 +32,5 @@
   "background": {
     "scripts": ["scripts/background.js"],
     "service_worker": "scripts/background.js"
-  },
-  "commands": {
-    "speak-selection": {
-      "suggested_key": {
-        "default": "Alt+S",
-        "mac": "Alt+S"
-      },
-      "description": "Speak selected text"
-    }
   }
 }

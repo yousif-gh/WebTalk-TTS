@@ -43,27 +43,6 @@
         </div>
       </div>
 
-      <!-- Pitch Slider -->
-      <div class="control-group">
-        <div class="slider-header">
-          <label for="pitch-slider">Pitch</label>
-          <span id="pitch-value" class="slider-value">1.0</span>
-        </div>
-        <input
-          type="range"
-          id="pitch-slider"
-          class="slider"
-          min="0.5"
-          max="2.0"
-          step="0.1"
-          value="1.0"
-        >
-        <div class="slider-labels">
-          <span>Low</span>
-          <span>High</span>
-        </div>
-      </div>
-
       <!-- Test Button -->
       <div class="control-group">
         <button id="test-voice-btn" class="btn btn-primary">
@@ -75,7 +54,7 @@
       <div class="control-group playback-section">
         <label>Playback Controls</label>
         <div class="playback-controls">
-          <button id="play-btn" class="btn btn-control" title="Play selected text (Alt+S)">
+          <button id="play-btn" class="btn btn-control" title="Play selected text">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M4 2.5v11l9-5.5L4 2.5z"/>
             </svg>
@@ -110,10 +89,10 @@
 
     <footer class="footer">
       <p>Select text on any page, right-click, and choose "Speak highlighted text"</p>
-      <p class="shortcut-hint">Keyboard shortcut: Alt+S</p>
     </footer>
   </div>
 
+  <script src="../scripts/config.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
