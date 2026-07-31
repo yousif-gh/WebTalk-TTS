@@ -50,7 +50,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: true, audio: arrayBuffer });
       })
       .catch(() => {
-        sendResponse({ success: false, error: `Kokoro server unreachable at ${SERVER_URL}. Is it running?` });
+        sendResponse({ success: false, error: `The server is not running` });
       });
     return true; // async response
   }
