@@ -6,15 +6,15 @@ A lightweight, cross-browser text-to-speech extension for Firefox and Chrome tha
 
 ## Features
 
-- **Text Selection Reading**: Highlight any text on a webpage and have it read aloud
-- **Context Menu Integration**: Right-click on selected text and choose "Speak highlighted text"
-- **Voice Selection**: Choose from Kokoro's available voices, fetched live from the local server
-- **Adjustable Speed**: Control speech rate from 0.5x to 2.0x
-- **Playback Controls**: Play, pause, and stop buttons for full control
-- **Progress Tracking**: Visual progress bar showing reading progress through long text
-- **Smart Text Chunking**: Splits long text into sentence-bounded chunks for responsive playback and progress reporting
-- **Dark/Light Mode**: Automatically matches your system theme preference
-- **Cross-Browser Support**: Works on both Firefox and Chrome (Chromium-based browsers)
+- **Text Selection Reading**: Highlight any text on a webpage and have it read aloud.
+- **Context Menu Integration**: Right-click on selected text and choose "Speak highlighted text".
+- **Voice Selection**: Choose from Kokoro's available voices, fetched live from the local server.
+- **Adjustable Speed**: Control speech rate from 0.5x to 2.0x.
+- **Playback Controls**: Play, pause, and stop buttons for full control.
+- **Progress Tracking**: Visual progress bar showing reading progress through long text.
+- **Smart Text Chunking**: Splits long text into sentence-bounded chunks for responsive playback and progress reporting.
+- **Dark/Light Mode**: Automatically matches your system theme preference.
+- **Cross-Browser Support**: Works on both Firefox and Chrome (Chromium-based browsers).
 
 ## Backend Server Setup
 
@@ -75,6 +75,7 @@ Click the extension icon in your browser toolbar to access:
 ### Progress Indicator
 
 When reading longer text, a progress bar shows:
+
 - Current chunk being read
 - Total number of chunks
 - Visual progress percentage
@@ -86,6 +87,7 @@ When reading longer text, a progress bar shows:
 **Problem**: The popup shows a server-unreachable error, or the voice dropdown is empty/disabled
 
 **Solution**:
+
 - Make sure the Kokoro server is running: `cd server && ./run.sh`
 - Confirm it's listening on `http://localhost:8008` (`curl localhost:8008/health`)
 - Reopen the popup after starting the server
@@ -95,6 +97,7 @@ When reading longer text, a progress bar shows:
 **Problem**: Clicking play doesn't produce any audio
 
 **Solution**:
+
 1. Confirm the Kokoro server is running (see above)
 2. Make sure text is selected on the page before triggering speech
 3. Try refreshing the page (content script may not be loaded)
@@ -106,6 +109,7 @@ When reading longer text, a progress bar shows:
 **Problem**: The extension icon is grayed out or doesn't respond
 
 **Solution**:
+
 - Browser internal pages (`chrome://`, `about:`, `file://`) are restricted
 - Some websites may block content scripts
 - PDF viewers may not support text selection
@@ -116,6 +120,7 @@ When reading longer text, a progress bar shows:
 **Problem**: Long text is interrupted or sounds unnatural
 
 **Solution**:
+
 - The extension automatically chunks text on sentence boundaries for smoother playback
 - Try reducing the speed setting
 - Some voices handle long text better than others - try a different voice
@@ -125,6 +130,7 @@ When reading longer text, a progress bar shows:
 **Problem**: Voice or speed settings reset when reopening the popup
 
 **Solution**:
+
 - Settings are stored locally in your browser
 - If using private/incognito mode, settings may not persist
 - Try clearing the extension's storage and reconfiguring
@@ -143,7 +149,7 @@ The extension requires minimal permissions:
 ### Browser Compatibility
 
 | Browser | Minimum Version | Notes |
-|---------|-----------------|-------|
+| --------- | ----------------- | ------- |
 | Firefox | 109+ | Full support with Manifest V3 |
 | Chrome | 88+ | Full support with Manifest V3 |
 | Edge | 88+ | Works as Chromium-based browser |
