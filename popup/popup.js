@@ -236,6 +236,12 @@
     voiceSelect.addEventListener('change', () => {
       currentSettings.voiceURI = voiceSelect.value;
       saveSettings();
+
+      const selectedOption = voiceSelect.options[voiceSelect.selectedIndex];
+      if (selectedOption && selectedOption.value) {
+        const voiceName = selectedOption.textContent.replace(/\s*\([^)]*\)$/, '');
+        showStatus(`${voiceName} voice downloading…`, 'info');
+      }
     });
 
     // Rate slider change
