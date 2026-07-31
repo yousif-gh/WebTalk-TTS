@@ -381,7 +381,7 @@
         speed: settings.rate
       });
     } catch (error) {
-      throw new Error(`Kokoro server unreachable at ${SERVER_URL}. Is it running?`);
+      throw new Error(`THe server is not running.`);
     }
 
     if (controller.signal.aborted) {
