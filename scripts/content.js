@@ -381,7 +381,7 @@
         speed: settings.rate
       });
     } catch (error) {
-      throw new Error(`THe server is not running.`);
+      throw new Error(`The server is not running.`);
     }
 
     if (controller.signal.aborted) {
